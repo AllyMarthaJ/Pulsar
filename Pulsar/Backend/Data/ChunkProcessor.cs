@@ -14,11 +14,13 @@ namespace Pulsar.Backend.Data;
 public abstract class ChunkProcessor(SegmentManager manager) {
     public string? Namespace { get; }
 
-    public abstract Segment[] ProcessActivation(Chunk chunk);
+    public abstract IEnumerable<Segment> CreatePossibleSegments();
 
-    public abstract Segment[] ProcessChunkProgress(Chunk chunk);
+    public abstract IEnumerable<Segment> ProcessActivation(Chunk chunk);
 
-    public abstract Segment[] ProcessCompletion(Chunk chunk);
+    public abstract IEnumerable<Segment> ProcessChunkProgress(Chunk chunk);
+
+    public abstract IEnumerable<Segment> ProcessCompletion(Chunk chunk);
 
     public virtual Segment[] HandleCustom() => Array.Empty<Segment>();
 }

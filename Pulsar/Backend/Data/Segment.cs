@@ -44,7 +44,7 @@ public class Segment {
     /// Fetch the current state (with label and such)
     /// </summary>
     /// <returns></returns>
-    public SegmentAction GetCurrentState() => this.State.Peek();
+    public SegmentAction? GetCurrentState() => this.State.Count > 0 ? this.State.Peek() : null;
 
     public Segment(string name, string? ns = null) {
         this.Name = name;

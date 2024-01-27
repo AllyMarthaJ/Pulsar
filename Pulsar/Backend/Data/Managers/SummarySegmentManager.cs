@@ -6,6 +6,20 @@ namespace Pulsar.Backend.Data.Managers;
 public class SummarySegmentManager : SegmentManager {
     private Dictionary<string, Segment> segments = new();
 
+    public override Segment InstancePossibleSegment(string segmentName) {
+        if (this.segments.ContainsKey(segmentName)) {
+            throw new Exception("Can't instance an already instantiated segment");
+        }
+        
+        var segment = new Segment(segmentName);
+        segment.State.Push(new SegmentAction(SegmentState.NOT_YET, DateTime.Now, null));
+        this.segments.Add(segmentName, segment);
+        
+        this.OnSegmentModified(new SegmentModifiedEventArgs(segment));
+
+        return segment;
+    }
+
     public override Segment Activate(string segmentName, string? ns, string? label) {
         Segment segment;
         if (!this.segments.TryGetValue(segmentName, out segment!)) {
@@ -31,7 +45,7 @@ public class SummarySegmentManager : SegmentManager {
             throw new ArgumentException("Couldn't find requested segment", nameof(segmentName));
         }
 
-        if (segment.GetCurrentState().State != SegmentState.STARTED) {
+        if (segment.GetCurrentState() != null && segment.GetCurrentState()?.State != SegmentState.STARTED) {
             return null;
         }
 
@@ -63,7 +77,7 @@ public class SummarySegmentManager : SegmentManager {
         foreach (var segment in this.segments.Values) {
             var curState = segment.GetCurrentState();
 
-            SegmentState? newState = curState.State switch {
+            SegmentState? newState = curState?.State switch {
                 SegmentState.STARTED => SegmentState.ENDED,
                 SegmentState.NOT_YET => SegmentState.NEVER_REACHED,
                 _ => null
@@ -73,6 +87,8 @@ public class SummarySegmentManager : SegmentManager {
                 var action = new SegmentAction(newState.Value, now, null);
                 segment.State.Push(action);
             }
+            
+            this.OnSegmentModified(new SegmentModifiedEventArgs(segment));
         }
     }
 
@@ -81,7 +97,7 @@ public class SummarySegmentManager : SegmentManager {
 
         foreach (Segment segment in this.segments.Values) {
             var l =
-                $"{segment.Name}: {segment.GetCurrentState().State} at {segment.GetCurrentState().Timestamp.ToLongTimeString()} [{segment.LogChunks.Count}]";
+                $"{segment.Name}: {segment.GetCurrentState()?.State} at {segment.GetCurrentState()?.Timestamp.ToLongTimeString()} [{segment.LogChunks.Count}]";
             sb.AppendLine(l + new string(' ', maxLen - l.Length));
         }
 
