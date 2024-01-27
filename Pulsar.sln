@@ -1,0 +1,16 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Pulsar", "Pulsar\Pulsar.csproj", "{635518BF-8A3F-476E-AF01-5D5DE3A2EB2B}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{635518BF-8A3F-476E-AF01-5D5DE3A2EB2B}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{635518BF-8A3F-476E-AF01-5D5DE3A2EB2B}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{635518BF-8A3F-476E-AF01-5D5DE3A2EB2B}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{635518BF-8A3F-476E-AF01-5D5DE3A2EB2B}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+EndGlobal
