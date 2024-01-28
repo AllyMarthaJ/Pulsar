@@ -1,4 +1,4 @@
-using Pulsar.IO;
+using StdInMimic.IO;
 
 namespace Pulsar.Backend.Data;
 
@@ -15,7 +15,7 @@ public class Segment {
     /// assumptions but segments can provide the granularity for task execution
     /// overview.
     /// </summary>
-    public string? Namespace { get; }
+    public string? Namespace { get; set; }
     
     /// <summary>
     /// A segment name should uniquely (within a namespace) identify a process
@@ -44,7 +44,7 @@ public class Segment {
     /// Fetch the current state (with label and such)
     /// </summary>
     /// <returns></returns>
-    public SegmentAction GetCurrentState() => this.State.Peek();
+    public SegmentAction? GetCurrentState() => this.State.Count > 0 ? this.State.Peek() : null;
 
     public Segment(string name, string? ns = null) {
         this.Name = name;

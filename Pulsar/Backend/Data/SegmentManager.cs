@@ -1,4 +1,4 @@
-using Pulsar.IO;
+using StdInMimic.IO;
 
 namespace Pulsar.Backend.Data;
 
@@ -12,6 +12,15 @@ public abstract class SegmentManager {
     protected virtual void OnSegmentModified(SegmentModifiedEventArgs e) {
         this.SegmentModified?.Invoke(this, e);
     }
+
+    /// <summary>
+    /// Creates a new segment instance with no namespace.
+    /// Segments can change namespaces, but, importantly, possible segments
+    /// don't yet have a state and won't respond to namespace changes. 
+    /// </summary>
+    /// <param name="segmentName"></param>
+    /// <returns></returns>
+    public abstract Segment InstancePossibleSegment(string segmentName);
     
     /// <summary>
     /// Activation procedure for a Segment acknowledges the existence
@@ -25,7 +34,7 @@ public abstract class SegmentManager {
 
     public abstract Segment? UpdateActive(string segmentName, Chunk chunk);
 
-    public abstract Segment Complete(string segmentName, Chunk chunk);
+    public abstract Segment Complete(string segmentName);
 
     public abstract void Done();
 
