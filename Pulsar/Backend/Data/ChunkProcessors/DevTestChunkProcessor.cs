@@ -12,6 +12,16 @@ public class DevTestChunkProcessor(SegmentManager manager) : ChunkProcessor(mana
     }
 
     public override IEnumerable<Segment> ProcessActivation(Chunk chunk) {
+        /*
+         * This implementation is prone to something I'm calling Buffer Fracturing.
+         * It's what happens when the standard input stream isn't read as expected;
+         * if there is a delay in reading, then the input stream will get too far ahead
+         * and more than expected characters will be read.
+         *
+         * In reality, regardless of how we read the standard input stream,
+         * we should be resilient to unexpected groupings of logs.
+         * Otherwise we may flakily miss some logs. e.g. 2 example started in one Chunk. 
+         */
         if (chunk.Content.Contains("rspec >>> example started")) {
             // One can grep for /^example: (.*?)$/gm and simply return the first group
             // as the label. Just looking for basic impl right now.
