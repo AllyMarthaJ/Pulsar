@@ -38,7 +38,10 @@ namespace Pulsar {
             Channel<Chunk> chunkChannel = Channel.CreateUnbounded<Chunk>();
             var chunkReader = chunkChannel.Reader;
 
-            StdinListener listener = new(chunkChannel);
+            StdinListener listener = new(chunkChannel,
+                args.Length > 0 && args[0].Equals("greedy", StringComparison.InvariantCultureIgnoreCase)
+                    ? StdinListenerFlags.GREEDY
+                    : StdinListenerFlags.NONE);
 
             AppDomain.CurrentDomain.ProcessExit += (o, e) => {
                 Console.WriteLine("Stopping listener...");

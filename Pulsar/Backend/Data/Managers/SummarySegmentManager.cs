@@ -26,6 +26,13 @@ public class SummarySegmentManager : SegmentManager {
             segment = new Segment(segmentName, ns);
             this.segments.Add(segmentName, segment);
         }
+        else {
+            // Only Activate if not already activated.
+            SegmentAction? cs = segment.GetCurrentState();
+            if (cs is { State: SegmentState.STARTED } && cs.Value.Label == label) {
+                return segment;
+            }
+        }
 
         // Reassign namespace if required.
         segment.Namespace = ns;
@@ -73,6 +80,12 @@ public class SummarySegmentManager : SegmentManager {
     public override Segment Complete(string segmentName) {
         if (!this.segments.TryGetValue(segmentName, out Segment? segment)) {
             throw new ArgumentException("Couldn't find requested segment", nameof(segmentName));
+        }
+
+        // Only Complete if not already completed.
+        SegmentAction? cs = segment.GetCurrentState();
+        if (cs is { State: SegmentState.ENDED }) {
+            return segment;
         }
 
         // Don't update LogChunks here -- it will have been updated in
