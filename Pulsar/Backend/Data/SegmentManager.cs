@@ -34,7 +34,7 @@ public abstract class SegmentManager {
 
     public abstract Segment? UpdateActive(string segmentName, Chunk chunk);
 
-    public abstract Segment Complete(string segmentName, Chunk chunk);
+    public abstract Segment Complete(string segmentName);
 
     public abstract void Done();
 

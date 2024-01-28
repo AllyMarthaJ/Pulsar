@@ -58,7 +58,6 @@ namespace Pulsar {
 
             while (await chunkReader.WaitToReadAsync()) {
                 while (chunkReader.TryRead(out Chunk? chunk)) {
-                    Console.WriteLine("huh " + chunk.Content);
                     // On chunk read, each registered log processor should,
                     // given an active manager, call various methods.
 

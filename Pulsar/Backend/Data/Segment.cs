@@ -15,7 +15,7 @@ public class Segment {
     /// assumptions but segments can provide the granularity for task execution
     /// overview.
     /// </summary>
-    public string? Namespace { get; }
+    public string? Namespace { get; set; }
     
     /// <summary>
     /// A segment name should uniquely (within a namespace) identify a process

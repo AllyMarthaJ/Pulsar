@@ -1,3 +1,4 @@
+using System.Text;
 using System.Threading.Channels;
 
 namespace StdInMimic.IO;
@@ -47,20 +48,24 @@ public class StdinListener(ChannelWriter<Chunk> chunkChannel, StdinListenerFlags
             // ChunkProcessors should be resilient to this; they will always 
             // have to deal with fractured logging anyway, but the point is
             // to raise events whenever we *can* read from stdin.
-            char[] buf = new char[4096];
+            char[] buf = new char[MAX_CHUNK_SIZE];
             string? chunk;
-
+            
             // This will spin whenever stdin has no input. LFG.
             if (flags.HasFlag(StdinListenerFlags.GREEDY)) {
-                Console.In.Read(buf, 0, MAX_CHUNK_SIZE);
-                chunk = new string(buf, 0, buf.Length);
+                var br = Console.In.Read(buf, 0, MAX_CHUNK_SIZE);
+                chunk = new string(buf, 0, br);
             }
             else {
                 chunk = Console.In.ReadLine();
             }
 
-            if (!String.IsNullOrEmpty(chunk)) {
+            if (!String.IsNullOrWhiteSpace(chunk)) {
                 var pubChunk = new Chunk(chunk, DateTime.Now);
+
+                if (chunk.Length == MAX_CHUNK_SIZE) {
+                    Console.WriteLine("WARNING: chunk was of size " + MAX_CHUNK_SIZE + " and will have been denormalised as a result.");
+                }
                 
                 // Channels actually simplify our event consumption greatly.
                 // Since production and consumption is 1:1, Channels will 
