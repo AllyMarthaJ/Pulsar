@@ -1,6 +1,6 @@
 using System.Threading.Channels;
 
-namespace Pulsar.IO;
+namespace StdInMimic.IO;
 
 /// <summary>
 /// Specifies how to read the input supplied to the standard input.

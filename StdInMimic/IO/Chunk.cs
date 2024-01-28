@@ -1,4 +1,4 @@
-namespace Pulsar.IO; 
+namespace StdInMimic.IO; 
 
 /// <summary>
 /// Refers to a chunk of the standard input stream contributing to a series

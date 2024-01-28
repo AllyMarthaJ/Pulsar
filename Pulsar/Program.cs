@@ -2,7 +2,7 @@
 using Pulsar.Backend.Data;
 using Pulsar.Backend.Data.ChunkProcessors;
 using Pulsar.Backend.Data.Managers;
-using Pulsar.IO;
+using StdInMimic.IO;
 
 namespace Pulsar {
     internal class Program {
@@ -50,20 +50,15 @@ namespace Pulsar {
 
             // --- Create Segment instances ---
             Console.WriteLine("Creating instances");
-            var res = chunkProcessorsByNamespace
+            Dictionary<string, Segment[]> initSegmentsByNamespace = chunkProcessorsByNamespace
                 .ToDictionary(
                     g => g.Key,
-                    g => g.Value.SelectMany(processor => processor.CreatePossibleSegments())
-                ).Select((w) => {
-                    var rr = w.Value.Select(ww => {
-                        Console.WriteLine(ww.GetCurrentState()?.State);
-                        return true;
-                    }).ToArray();
-                    return true;
-                }).ToArray();
+                    g => g.Value.SelectMany(processor => processor.CreatePossibleSegments()).ToArray()
+                );
 
             while (await chunkReader.WaitToReadAsync()) {
                 while (chunkReader.TryRead(out Chunk? chunk)) {
+                    Console.WriteLine("huh " + chunk.Content);
                     // On chunk read, each registered log processor should,
                     // given an active manager, call various methods.
 
