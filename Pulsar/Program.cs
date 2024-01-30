@@ -1,4 +1,6 @@
-﻿using System.Threading.Channels;
+﻿using System.Text.Json;
+using System.Text.RegularExpressions;
+using System.Threading.Channels;
 using Pulsar.Backend.Data;
 using Pulsar.Backend.Data.ChunkProcessors;
 using Pulsar.Backend.Data.Managers;
@@ -13,7 +15,17 @@ namespace Pulsar {
 
         // TODO: Array of SegmentManager
         private static SegmentManager manager = new SummarySegmentManager();
-        private static ChunkProcessor[] registeredProcessors = { new DevTestChunkProcessor(manager) };
+
+        private static ChunkProcessor[] registeredProcessors = {
+            new RegExChunkProcessor(manager, new RegexSegmentOptions[] {
+                new RegexSegmentOptions(new Regex("I,.*?rspec >>> example started(.*?\n\nexample: (?<label>.*?)\n\n)?"),
+                    null, new Regex("example: (?<label>.*?)\n\n"), "test-started", "test"),
+                new RegexSegmentOptions(new Regex("I,.*?rspec >>> example passed"),
+                    new Regex("I,.*?rspec >>> example passed"), null, "test-succeed", "test"),
+                new RegexSegmentOptions(new Regex("I,.*?rspec >>> example failed"),
+                    new Regex("I,.*?rspec >>> example failed"), null, "test-failed", "test"),
+            })
+        };
 
         private static Dictionary<string, ChunkProcessor[]> chunkProcessorsByNamespace = registeredProcessors
             .GroupBy((ac) => ac.Namespace)

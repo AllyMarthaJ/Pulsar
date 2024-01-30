@@ -12,7 +12,7 @@ public class SummarySegmentManager : SegmentManager {
         }
 
         var segment = new Segment(segmentName);
-        segment.State.Push(new SegmentAction(SegmentState.NOT_YET, DateTime.Now, null));
+        segment.State.AddLast(new SegmentAction(SegmentState.NOT_YET, DateTime.Now, null));
         this.segments.Add(segmentName, segment);
 
         this.OnSegmentModified(new SegmentModifiedEventArgs(segment));
@@ -29,7 +29,7 @@ public class SummarySegmentManager : SegmentManager {
         else {
             // Only Activate if not already activated.
             SegmentAction? cs = segment.GetCurrentState();
-            if (cs is { State: SegmentState.STARTED } && cs.Value.Label == label) {
+            if (cs is { State: SegmentState.STARTED } && segment.GetLatestLabel() == label) {
                 return segment;
             }
         }
@@ -42,7 +42,7 @@ public class SummarySegmentManager : SegmentManager {
         // only the "client-side" timestamp.
         var action = new SegmentAction(SegmentState.STARTED, DateTime.Now, label);
 
-        segment.State.Push(action);
+        segment.State.AddLast(action);
 
         this.OnSegmentModified(new SegmentModifiedEventArgs(segment));
 
@@ -50,7 +50,7 @@ public class SummarySegmentManager : SegmentManager {
         if (!String.IsNullOrEmpty(ns)) {
             var conflictingSegments =
                 this.segments.Where((g) => g.Value.Namespace == ns && g.Value.Name != segmentName);
-            
+
             foreach ((string? _, Segment? conflictingSegment) in conflictingSegments) {
                 this.Complete(conflictingSegment.Name);
             }
@@ -60,9 +60,9 @@ public class SummarySegmentManager : SegmentManager {
         return segment;
     }
 
-    public override Segment? UpdateActive(string segmentName, Chunk chunk) {
+    public override Segment? UpdateActive(string segmentName, Chunk chunk, string? label) {
         if (!this.segments.TryGetValue(segmentName, out Segment? segment)) {
-            throw new ArgumentException("Couldn't find requested segment", nameof(segmentName));
+            throw new ArgumentException("Couldn't find requested segment " + segmentName, nameof(segmentName));
         }
 
         var cs = segment.GetCurrentState();
@@ -70,9 +70,25 @@ public class SummarySegmentManager : SegmentManager {
             return null;
         }
 
-        segment.LogChunks.Add(chunk);
+        var doUpdate = false;
 
-        this.OnSegmentModified(new SegmentModifiedEventArgs(segment));
+        if (label != null) {
+            // This is a correction to the Segment's label
+            // It's entirely possible it was missed in the activation stage.
+            segment.State.AddLast(new SegmentAction(SegmentState.STARTED, DateTime.Now, label));
+            doUpdate = true;
+        }
+
+        // Reference check to ensure we aren't double-appending chunks.
+        // This can happen if there are multiple updates in a single chunk.
+        if (segment.LogChunks.Count == 0 || segment.LogChunks.Last() != chunk) {
+            segment.LogChunks.Add(chunk);
+            doUpdate = true;
+        }
+
+        if (doUpdate) {
+            this.OnSegmentModified(new SegmentModifiedEventArgs(segment));
+        }
 
         return segment;
     }
@@ -92,7 +108,7 @@ public class SummarySegmentManager : SegmentManager {
         // the last round of UpdateActive. Double counting sucks.
 
         var action = new SegmentAction(SegmentState.ENDED, DateTime.Now, null);
-        segment.State.Push(action);
+        segment.State.AddLast(action);
 
         this.OnSegmentModified(new SegmentModifiedEventArgs(segment));
 
@@ -113,7 +129,7 @@ public class SummarySegmentManager : SegmentManager {
 
             if (newState != null) {
                 var action = new SegmentAction(newState.Value, now, null);
-                segment.State.Push(action);
+                segment.State.AddLast(action);
             }
 
             this.OnSegmentModified(new SegmentModifiedEventArgs(segment));
@@ -125,7 +141,7 @@ public class SummarySegmentManager : SegmentManager {
 
         foreach (Segment segment in this.segments.Values) {
             var l =
-                $"{segment.Name}: {segment.GetCurrentState()?.State} at {segment.GetCurrentState()?.Timestamp.ToLongTimeString()} [{segment.LogChunks.Count}]";
+                $"{segment.Name}: {segment.GetCurrentState()?.State} at {segment.GetCurrentState()?.Timestamp.ToLongTimeString()} [{segment.LogChunks.Count}] [{segment.GetLatestLabel()}]";
             sb.AppendLine(l + new string(' ', maxLen - l.Length));
         }
 

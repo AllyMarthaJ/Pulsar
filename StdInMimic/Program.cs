@@ -10,6 +10,12 @@ enum ProgramMode {
     MIMIC
 }
 
+enum MimicMode {
+    REPLAY,
+    ALL,
+    INTERACTIVE,
+}
+
 internal class Program {
     private static Channel<Chunk>? stdinListenerChannel;
     private static StdinListener? stdinListener;
@@ -25,7 +31,7 @@ internal class Program {
         }
 
         ProgramMode mode;
-        bool shouldSleep = true;
+        MimicMode mimicMode = MimicMode.ALL;
         if (args[0] == "record") {
             if (args.Length >= 2) {
                 filePath = args[1];
@@ -45,7 +51,13 @@ internal class Program {
             filePath = args[1];
 
             if (args.Length >= 3) {
-                shouldSleep = args[2] == "t" || args[2] == "T";
+                var cMode = args[2];
+                mimicMode = cMode switch {
+                    "replay" => MimicMode.REPLAY,
+                    "all" => MimicMode.ALL,
+                    "interactive" => MimicMode.INTERACTIVE,
+                    _ => throw new ArgumentException("Womp womp")
+                };
             }
 
             mode = ProgramMode.MIMIC;
@@ -61,7 +73,7 @@ internal class Program {
             case ProgramMode.RECORD:
                 Console.WriteLine("Now writing stdin to " + fi.FullName);
                 Console.WriteLine("Terminate at any time...");
-                
+
                 // init listening channel
                 stdinListenerChannel = Channel.CreateUnbounded<Chunk>();
                 stdinListener = new(stdinListenerChannel.Writer);
@@ -70,12 +82,12 @@ internal class Program {
                 var chunkReader = stdinListenerChannel.Reader;
 
                 DateTime? baseTs = null;
-                
+
                 while (await chunkReader.WaitToReadAsync()) {
                     while (chunkReader.TryRead(out Chunk? chunk)) {
                         TimeSpan os = baseTs == null ? new TimeSpan(0) : (chunk.Timestamp - baseTs).Value;
-                        
-                        mimicStdInLogs.Add(new MimicLog(chunk.Content, os.Milliseconds));
+
+                        mimicStdInLogs.Add(new MimicLog(chunk.Content, (long)os.TotalMilliseconds));
 
                         baseTs = chunk.Timestamp;
 
@@ -83,8 +95,8 @@ internal class Program {
                         // channels will allow us to consume this regardless.
                         string serialised = JsonSerializer.Serialize(mimicStdInLogs);
                         await File.WriteAllTextAsync(filePath, serialised);
-                        
-                        Console.WriteLine($"[{chunk.Timestamp.ToLongTimeString()}] Writing log....");
+
+                        await Console.Out.WriteAsync(chunk.Content);
                     }
                 }
 
@@ -92,21 +104,23 @@ internal class Program {
             case ProgramMode.MIMIC:
                 var fContent = await File.ReadAllTextAsync(filePath);
                 mimicStdInLogs = JsonSerializer.Deserialize<List<MimicLog>>(fContent)!;
-                
+
                 foreach (var mimicStdInLog in mimicStdInLogs) {
                     await Console.Out.WriteAsync(mimicStdInLog.Log);
 
-                    if (shouldSleep) {
+                    if (mimicMode == MimicMode.REPLAY) {
                         if (mimicStdInLog.TimeSinceLastEvent >= Int32.MaxValue) {
                             // wtf yo
                             throw new Exception("Something went wrong and y'all high");
                         }
-                        else {
-                            Thread.Sleep(Convert.ToInt32(mimicStdInLog.TimeSinceLastEvent));
-                        }
+
+                        Thread.Sleep(Convert.ToInt32(mimicStdInLog.TimeSinceLastEvent));
+                    }
+                    else if (mimicMode == MimicMode.INTERACTIVE) {
+                        Console.ReadKey(true);
                     }
                 }
-                
+
                 break;
         }
     }

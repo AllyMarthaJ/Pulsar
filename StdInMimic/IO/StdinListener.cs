@@ -50,31 +50,33 @@ public class StdinListener(ChannelWriter<Chunk> chunkChannel, StdinListenerFlags
             // to raise events whenever we *can* read from stdin.
             char[] buf = new char[MAX_CHUNK_SIZE];
             string? chunk;
-            
+
             // This will spin whenever stdin has no input. LFG.
             if (flags.HasFlag(StdinListenerFlags.GREEDY)) {
                 var br = Console.In.Read(buf, 0, MAX_CHUNK_SIZE);
                 chunk = new string(buf, 0, br);
             }
             else {
-                chunk = Console.In.ReadLine();
+                chunk = Console.In.ReadLine() + Environment.NewLine;
             }
 
-            if (!String.IsNullOrWhiteSpace(chunk)) {
-                var pubChunk = new Chunk(chunk, DateTime.Now);
+            // Don't bother ensuring if the chunk is empty.
+            // Doing that means we miss valuable empty lines™.
+            
+            var pubChunk = new Chunk(chunk, DateTime.Now);
 
-                if (chunk.Length == MAX_CHUNK_SIZE) {
-                    Console.WriteLine("WARNING: chunk was of size " + MAX_CHUNK_SIZE + " and will have been denormalised as a result.");
-                }
-                
-                // Channels actually simplify our event consumption greatly.
-                // Since production and consumption is 1:1, Channels will 
-                // allows us to asynchronously write and read without needing
-                // to explicitly spin waiting for events (since event consumption
-                // can and probably will be slow).
-                if (!chunkChannel.TryWrite(pubChunk)) {
-                    throw new Exception("Channel was closed.");
-                }
+            if (chunk.Length == MAX_CHUNK_SIZE) {
+                Console.WriteLine("WARNING: chunk was of size " + MAX_CHUNK_SIZE +
+                                  " and will have been denormalised as a result.");
+            }
+
+            // Channels actually simplify our event consumption greatly.
+            // Since production and consumption is 1:1, Channels will 
+            // allows us to asynchronously write and read without needing
+            // to explicitly spin waiting for events (since event consumption
+            // can and probably will be slow).
+            if (!chunkChannel.TryWrite(pubChunk)) {
+                throw new Exception("Channel was closed.");
             }
 
             // We will never actually close the channel here.

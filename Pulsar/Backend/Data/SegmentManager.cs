@@ -32,7 +32,7 @@ public abstract class SegmentManager {
     /// <param name="label"></param>
     public abstract Segment Activate(string segmentName, string? ns, string? label);
 
-    public abstract Segment? UpdateActive(string segmentName, Chunk chunk);
+    public abstract Segment? UpdateActive(string segmentName, Chunk chunk, string? label = null);
 
     public abstract Segment Complete(string segmentName);
 

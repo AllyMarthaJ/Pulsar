@@ -16,13 +16,13 @@ public class Segment {
     /// overview.
     /// </summary>
     public string? Namespace { get; set; }
-    
+
     /// <summary>
     /// A segment name should uniquely (within a namespace) identify a process
     /// or series of processes. 
     /// </summary>
     public string Name { get; }
-    
+
     /// <summary>
     /// While the logs themselves can tell you when everything internally
     /// occurred, they won't answer the question "how many times did we start
@@ -36,7 +36,7 @@ public class Segment {
     ///
     /// SegmentActions should never be shared across segments.
     /// </summary>
-    public Stack<SegmentAction> State { get; } = new();
+    public LinkedList<SegmentAction> State { get; } = new();
 
     public List<Chunk> LogChunks { get; } = new();
 
@@ -44,11 +44,27 @@ public class Segment {
     /// Fetch the current state (with label and such)
     /// </summary>
     /// <returns></returns>
-    public SegmentAction? GetCurrentState() => this.State.Count > 0 ? this.State.Peek() : null;
+    public SegmentAction? GetCurrentState() => this.State.Last?.Value;
 
     public Segment(string name, string? ns = null) {
         this.Name = name;
         this.Namespace = ns;
+    }
+
+    public string? GetLatestLabel() {
+        if (this.State.Count == 0) {
+            return null;
+        }
+
+        LinkedListNode<SegmentAction>? current = this.State.Last;
+
+        do {
+            if (current!.Value.Label != null) {
+                return current.Value.Label;
+            }
+        } while ((current = current.Previous) != null);
+
+        return null;
     }
 }
 
