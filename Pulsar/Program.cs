@@ -1,5 +1,4 @@
-﻿using System.Text.Json;
-using System.Text.RegularExpressions;
+﻿using System.Text.RegularExpressions;
 using System.Threading.Channels;
 using Pulsar.Backend.Data;
 using Pulsar.Backend.Data.ChunkProcessors;
@@ -8,7 +7,8 @@ using StdInMimic.IO;
 
 namespace Pulsar {
     internal class Program {
-        private const int MAX_LEN = 100;
+        private const int MAX_LEN = 230;
+        private const bool DO_POST_PROCESSING = false;
 
         const string ESC = "\x1b[";
         const string ZERO = ESC + "H";
@@ -18,13 +18,28 @@ namespace Pulsar {
 
         private static ChunkProcessor[] registeredProcessors = {
             new RegExChunkProcessor(manager, new RegexSegmentOptions[] {
-                new RegexSegmentOptions(new Regex("I,.*?rspec >>> example started(.*?\n\nexample: (?<label>.*?)\n\n)?"),
-                    null, new Regex("example: (?<label>.*?)\n\n"), "test-started", "test"),
-                new RegexSegmentOptions(new Regex("I,.*?rspec >>> example passed"),
-                    new Regex("I,.*?rspec >>> example passed"), null, "test-succeed", "test"),
-                new RegexSegmentOptions(new Regex("I,.*?rspec >>> example failed"),
-                    new Regex("I,.*?rspec >>> example failed"), null, "test-failed", "test"),
-            })
+                new RegexSegmentOptions(
+                    new Regex("I,.*?rspec >>> example started"),
+                    null, 
+                    "test-started", 
+                    "test", 
+                    new Regex("example: (?<label>.*)\\n?")
+                    ),
+                new RegexSegmentOptions(
+                    new Regex("I,.*?rspec >>> example passed"),
+                    new Regex("I,.*?rspec >>> example passed"), 
+                    "test-succeed", 
+                    "test",
+                    new Regex("example: (?<label>.*)\\n?")
+                    ),
+                new RegexSegmentOptions(new Regex(
+                        "I,.*?rspec >>> example failed"),
+                    new Regex("I,.*?rspec >>> example failed"), 
+                    "test-failed", 
+                    "test",
+                    new Regex("example: (?<label>.*)\\n?")
+                    ),
+            }, !DO_POST_PROCESSING)
         };
 
         private static Dictionary<string, ChunkProcessor[]> chunkProcessorsByNamespace = registeredProcessors
@@ -32,13 +47,19 @@ namespace Pulsar {
             .ToDictionary((g) => String.IsNullOrEmpty(g.Key) ? "--reserved--" : g.Key, g => g.ToArray());
 
         public static async Task Main(string[] args) {
-            manager.SegmentModified += (sender, eventArgs) => {
+            Stack<Segment> segmentsToProcess = new();
+            
+            manager.SegmentModified += (sender, ev) => {
+                if (DO_POST_PROCESSING) {
+                    segmentsToProcess.Push(ev.Segment);
+                }
+                
                 var dump = manager.Dump(MAX_LEN).Split("\n");
 
                 for (int i = 0; i < dump.Length; i++) {
                     var line = dump[i];
-                    // Console.WriteLine($"{ESC}{i + 2};0H" + line);
-                    Console.WriteLine(line);
+                    Console.WriteLine($"{ESC}{i + 2};0H" + line);
+                    // Console.WriteLine(line);
                 }
             };
 
@@ -49,17 +70,13 @@ namespace Pulsar {
             // What should happen if we drop messages anyway...
             Channel<Chunk> chunkChannel = Channel.CreateUnbounded<Chunk>();
             var chunkReader = chunkChannel.Reader;
-
+            
             StdinListener listener = new(chunkChannel,
                 args.Length > 0 && args[0].Equals("greedy", StringComparison.InvariantCultureIgnoreCase)
                     ? StdinListenerFlags.GREEDY
                     : StdinListenerFlags.NONE);
 
-            AppDomain.CurrentDomain.ProcessExit += (o, e) => {
-                Console.WriteLine("Stopping listener...");
-                listener.Stop();
-                chunkChannel.Writer.Complete();
-            };
+            AppDomain.CurrentDomain.ProcessExit += (o, e) => { Console.WriteLine("Stopping listener..."); };
 
             listener.Start();
 
@@ -72,7 +89,10 @@ namespace Pulsar {
                 );
 
             while (await chunkReader.WaitToReadAsync()) {
+                Chunk? lastChunk = null;
                 while (chunkReader.TryRead(out Chunk? chunk)) {
+                    lastChunk = chunk;
+                    
                     // On chunk read, each registered log processor should,
                     // given an active manager, call various methods.
 
@@ -117,6 +137,26 @@ namespace Pulsar {
                             g => g.Value.SelectMany(processor => processor.ProcessCompletion(chunk)).ToArray()
                         );
                 }
+
+                // --- Supplementary processing stage ---
+                // Process one at a time while we have time. Minimal time should be
+                // given to intensive supplementary processing.
+                if (DO_POST_PROCESSING) {
+                    if (lastChunk != null && segmentsToProcess.TryPop(out Segment? segment)) {
+                        foreach (ChunkProcessor registeredProcessor in registeredProcessors) {
+                            registeredProcessor.SummariseSegment(segment);
+                        }
+                    }   
+                }
+            }
+            
+            // --- Double supplementary processing stage. ---
+            if (DO_POST_PROCESSING) {
+                while (segmentsToProcess.TryPop(out Segment? segment)) {
+                    foreach (ChunkProcessor registeredProcessor in registeredProcessors) {
+                        registeredProcessor.SummariseSegment(segment);
+                    }
+                }   
             }
         }
     }

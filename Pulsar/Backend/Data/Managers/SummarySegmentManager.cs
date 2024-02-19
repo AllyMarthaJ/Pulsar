@@ -4,7 +4,7 @@ using StdInMimic.IO;
 namespace Pulsar.Backend.Data.Managers;
 
 public class SummarySegmentManager : SegmentManager {
-    private Dictionary<string, Segment> segments = new();
+    private readonly Dictionary<string, Segment> segments = new();
 
     public override Segment InstancePossibleSegment(string segmentName) {
         if (this.segments.ContainsKey(segmentName)) {
@@ -21,8 +21,7 @@ public class SummarySegmentManager : SegmentManager {
     }
 
     public override Segment Activate(string segmentName, string? ns, string? label) {
-        Segment segment;
-        if (!this.segments.TryGetValue(segmentName, out segment!)) {
+        if (!this.segments.TryGetValue(segmentName, out Segment? segment)) {
             segment = new Segment(segmentName, ns);
             this.segments.Add(segmentName, segment);
         }
@@ -60,7 +59,7 @@ public class SummarySegmentManager : SegmentManager {
         return segment;
     }
 
-    public override Segment? UpdateActive(string segmentName, Chunk chunk, string? label) {
+    public override Segment? UpdateActive(string segmentName, Chunk chunk, string? label = null) {
         if (!this.segments.TryGetValue(segmentName, out Segment? segment)) {
             throw new ArgumentException("Couldn't find requested segment " + segmentName, nameof(segmentName));
         }
@@ -81,8 +80,8 @@ public class SummarySegmentManager : SegmentManager {
 
         // Reference check to ensure we aren't double-appending chunks.
         // This can happen if there are multiple updates in a single chunk.
-        if (segment.LogChunks.Count == 0 || segment.LogChunks.Last() != chunk) {
-            segment.LogChunks.Add(chunk);
+        if (segment.SumLogs() == 0 || segment.Last() != chunk) {
+            segment.Push(chunk);
             doUpdate = true;
         }
 
@@ -141,7 +140,10 @@ public class SummarySegmentManager : SegmentManager {
 
         foreach (Segment segment in this.segments.Values) {
             var l =
-                $"{segment.Name}: {segment.GetCurrentState()?.State} at {segment.GetCurrentState()?.Timestamp.ToLongTimeString()} [{segment.LogChunks.Count}] [{segment.GetLatestLabel()}]";
+                $"{segment.Name}: {segment.GetCurrentState()?.State} at {segment.GetCurrentState()?.Timestamp.ToLongTimeString()} [{segment.SumLogs()}] [{segment.GetLatestLabel()}]";
+            if (l.Length > maxLen) {
+                l = l[0..(maxLen-3)] + "...";
+            }
             sb.AppendLine(l + new string(' ', maxLen - l.Length));
         }
 

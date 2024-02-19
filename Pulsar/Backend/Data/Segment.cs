@@ -1,3 +1,4 @@
+using System.Text;
 using StdInMimic.IO;
 
 namespace Pulsar.Backend.Data;
@@ -38,7 +39,25 @@ public class Segment {
     /// </summary>
     public LinkedList<SegmentAction> State { get; } = new();
 
-    public List<Chunk> LogChunks { get; } = new();
+    private readonly List<Chunk> logChunks = new();
+    private readonly StringBuilder rawLogAggregate = new();
+
+    public void Push(Chunk chunk) {
+        this.logChunks.Add(chunk);
+        this.rawLogAggregate.Append(chunk.Content + chunk.Delimiter);
+    }
+
+    public Chunk Last() {
+        return this.logChunks.Last();
+    }
+
+    public int SumLogs() {
+        return this.logChunks.Count;
+    }
+
+    public string AggregatedLogs() {
+        return this.rawLogAggregate.ToString();
+    }
 
     /// <summary>
     /// Fetch the current state (with label and such)

@@ -1,4 +1,4 @@
-namespace StdInMimic.IO; 
+namespace StdInMimic.IO;
 
 /// <summary>
 /// Refers to a chunk of the standard input stream contributing to a series
@@ -13,4 +13,4 @@ namespace StdInMimic.IO;
 /// </summary>
 /// <param name="Content">Content from the stream</param>
 /// <param name="Timestamp">Time of insertion</param>
-public record Chunk(string Content, DateTime Timestamp);
+public record Chunk(string Content, DateTime Timestamp, string Delimiter) ;

@@ -36,6 +36,7 @@ public class StdinListener(ChannelWriter<Chunk> chunkChannel, StdinListenerFlags
         }
 
         this.listening = false;
+        chunkChannel.Complete();
     }
 
     private void readStdin() {
@@ -57,13 +58,21 @@ public class StdinListener(ChannelWriter<Chunk> chunkChannel, StdinListenerFlags
                 chunk = new string(buf, 0, br);
             }
             else {
-                chunk = Console.In.ReadLine() + Environment.NewLine;
+                var line = Console.In.ReadLine();
+                if (line == null) {
+                    // reached end.
+                    this.Stop();
+                    break;
+                }
+
+                chunk = line + Environment.NewLine;
             }
 
             // Don't bother ensuring if the chunk is empty.
             // Doing that means we miss valuable empty lines™.
-            
-            var pubChunk = new Chunk(chunk, DateTime.Now);
+
+            var pubChunk = new Chunk(chunk, DateTime.Now,
+                flags.HasFlag(StdinListenerFlags.GREEDY) ? "" : Environment.NewLine);
 
             if (chunk.Length == MAX_CHUNK_SIZE) {
                 Console.WriteLine("WARNING: chunk was of size " + MAX_CHUNK_SIZE +

@@ -22,5 +22,7 @@ public abstract class ChunkProcessor(SegmentManager manager) {
 
     public abstract IEnumerable<Segment> ProcessCompletion(Chunk chunk);
 
+    public abstract Segment? SummariseSegment(Segment segment);
+
     public virtual Segment[] HandleCustom() => Array.Empty<Segment>();
 }

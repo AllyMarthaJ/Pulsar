@@ -113,8 +113,8 @@ internal class Program {
                             // wtf yo
                             throw new Exception("Something went wrong and y'all high");
                         }
-
-                        Thread.Sleep(Convert.ToInt32(mimicStdInLog.TimeSinceLastEvent));
+                        
+                        // Thread.Sleep(Convert.ToInt32(mimicStdInLog.TimeSinceLastEvent));
                     }
                     else if (mimicMode == MimicMode.INTERACTIVE) {
                         Console.ReadKey(true);
