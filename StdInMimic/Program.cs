@@ -76,7 +76,7 @@ internal class Program {
 
                 // init listening channel
                 stdinListenerChannel = Channel.CreateUnbounded<Chunk>();
-                stdinListener = new(stdinListenerChannel.Writer);
+                stdinListener = new StdinListener(Console.In, stdinListenerChannel.Writer);
                 stdinListener.Start();
 
                 var chunkReader = stdinListenerChannel.Reader;
@@ -109,12 +109,13 @@ internal class Program {
                     await Console.Out.WriteAsync(mimicStdInLog.Log);
 
                     if (mimicMode == MimicMode.REPLAY) {
-                        if (mimicStdInLog.TimeSinceLastEvent >= Int32.MaxValue) {
+                        if (mimicStdInLog.TimeSinceLastEvent >= Int32.MaxValue ||
+                            mimicStdInLog.TimeSinceLastEvent < 0) {
                             // wtf yo
                             throw new Exception("Something went wrong and y'all high");
                         }
-                        
-                        // Thread.Sleep(Convert.ToInt32(mimicStdInLog.TimeSinceLastEvent));
+
+                        Thread.Sleep(Convert.ToInt32(mimicStdInLog.TimeSinceLastEvent));
                     }
                     else if (mimicMode == MimicMode.INTERACTIVE) {
                         Console.ReadKey(true);

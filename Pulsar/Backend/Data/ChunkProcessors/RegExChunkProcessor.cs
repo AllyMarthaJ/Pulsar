@@ -17,8 +17,7 @@ public record struct RegexSegmentOptions(Regex Activate, Regex? Complete, string
 
 public class RegExChunkProcessor(
     SegmentManager manager,
-    IEnumerable<RegexSegmentOptions> options,
-    bool enableInlineSegmentAggregation) : ChunkProcessor(manager) {
+    IEnumerable<RegexSegmentOptions> options) : ChunkProcessor(manager) {
     public override IEnumerable<Segment> CreatePossibleSegments() {
         return options.Select(option => manager.InstancePossibleSegment(option.Name));
     }
@@ -37,12 +36,6 @@ public class RegExChunkProcessor(
         foreach (RegexSegmentOptions option in options) {
             Segment? segment = manager.UpdateActive(option.Name, chunk);
             if (segment != null) {
-                if (enableInlineSegmentAggregation) {
-                    // This has the potential to be extremely slow.
-                    // Only enable if you don't run into issues.
-                    this.SummariseSegment(segment);
-                }
-                
                 yield return segment;
             }
         }
@@ -72,7 +65,7 @@ public class RegExChunkProcessor(
                 .AggregatedLogs())
             .Select(match => match.Groups["label"])
             .LastOrDefault();
-
+    
         if (label is null) {
             return null;
         }

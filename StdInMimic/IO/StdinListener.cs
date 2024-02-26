@@ -14,7 +14,7 @@ public enum StdinListenerFlags {
     GREEDY = 2 >> 1,
 }
 
-public class StdinListener(ChannelWriter<Chunk> chunkChannel, StdinListenerFlags flags = StdinListenerFlags.GREEDY) {
+public class StdinListener(TextReader inputReader, ChannelWriter<Chunk> chunkChannel, StdinListenerFlags flags = StdinListenerFlags.GREEDY) {
     private const int MAX_CHUNK_SIZE = 4096;
 
     private bool listening;
@@ -54,18 +54,23 @@ public class StdinListener(ChannelWriter<Chunk> chunkChannel, StdinListenerFlags
 
             // This will spin whenever stdin has no input. LFG.
             if (flags.HasFlag(StdinListenerFlags.GREEDY)) {
-                var br = Console.In.Read(buf, 0, MAX_CHUNK_SIZE);
-                chunk = new string(buf, 0, br);
-            }
-            else {
-                var line = Console.In.ReadLine();
-                if (line == null) {
+                var br = inputReader.Read(buf, 0, MAX_CHUNK_SIZE);
+
+                if (br == 0) {
                     // reached end.
                     this.Stop();
                     break;
                 }
-
-                chunk = line + Environment.NewLine;
+                
+                chunk = new string(buf, 0, br);
+            }
+            else {
+                chunk = inputReader.ReadLine();
+                if (chunk is null) {
+                    // reached end.
+                    this.Stop();
+                    break;
+                }
             }
 
             // Don't bother ensuring if the chunk is empty.

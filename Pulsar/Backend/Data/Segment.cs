@@ -64,7 +64,7 @@ public class Segment {
     /// </summary>
     /// <returns></returns>
     public SegmentAction? GetCurrentState() => this.State.Last?.Value;
-
+    
     public Segment(string name, string? ns = null) {
         this.Name = name;
         this.Namespace = ns;

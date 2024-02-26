@@ -63,19 +63,19 @@ public class SummarySegmentManager : SegmentManager {
         if (!this.segments.TryGetValue(segmentName, out Segment? segment)) {
             throw new ArgumentException("Couldn't find requested segment " + segmentName, nameof(segmentName));
         }
-
-        var cs = segment.GetCurrentState();
-        if (cs.HasValue && cs.Value.State != SegmentState.STARTED) {
-            return null;
-        }
-
         var doUpdate = false;
 
-        if (label != null) {
+        if (label != null && label != segment.GetLatestLabel()) {
             // This is a correction to the Segment's label
             // It's entirely possible it was missed in the activation stage.
             segment.State.AddLast(new SegmentAction(SegmentState.STARTED, DateTime.Now, label));
             doUpdate = true;
+        }
+        
+        // Only short-circuit updating if we haven't provided a correction label.
+        var cs = segment.GetCurrentState();
+        if (cs.HasValue && cs.Value.State != SegmentState.STARTED) {
+            return doUpdate ? segment : null;
         }
 
         // Reference check to ensure we aren't double-appending chunks.
@@ -114,7 +114,7 @@ public class SummarySegmentManager : SegmentManager {
         return segment;
     }
 
-    public override void Done() {
+    public override IEnumerable<Segment> Done() {
         DateTime now = DateTime.Now;
 
         foreach (var segment in this.segments.Values) {
@@ -130,8 +130,12 @@ public class SummarySegmentManager : SegmentManager {
                 var action = new SegmentAction(newState.Value, now, null);
                 segment.State.AddLast(action);
             }
-
+            
             this.OnSegmentModified(new SegmentModifiedEventArgs(segment));
+
+            if (segment.GetCurrentState()!.Value.State == SegmentState.ENDED) {
+                yield return segment;
+            }
         }
     }
 
@@ -142,7 +146,7 @@ public class SummarySegmentManager : SegmentManager {
             var l =
                 $"{segment.Name}: {segment.GetCurrentState()?.State} at {segment.GetCurrentState()?.Timestamp.ToLongTimeString()} [{segment.SumLogs()}] [{segment.GetLatestLabel()}]";
             if (l.Length > maxLen) {
-                l = l[0..(maxLen-3)] + "...";
+                l = l[..(maxLen-3)] + "...";
             }
             sb.AppendLine(l + new string(' ', maxLen - l.Length));
         }

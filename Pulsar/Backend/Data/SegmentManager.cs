@@ -36,7 +36,7 @@ public abstract class SegmentManager {
 
     public abstract Segment Complete(string segmentName);
 
-    public abstract void Done();
+    public abstract IEnumerable<Segment> Done();
 
     public abstract string Dump(int maxLen = 100);
 }
